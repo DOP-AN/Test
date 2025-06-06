@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Google Gantt Chart from Sheet Data</title>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <style>
+        #chart_div {
+            width: 90%;
+            height: 500px;
+            margin: 20px auto;
+            border: 1px solid #ccc;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Project Timeline</h1>
+    <div id="chart_div"></div>
+
+    <script type="text/javascript">
+        // Load the Google Charts library
+        google.charts.load('current', {'packages':['gantt']});
+        google.charts.setOnLoadCallback(drawChart);
+
+        async function drawChart() {
+            let sheetData = [];
+
+            try {
+                const response = await fetch('https://script.google.com/macros/s/AKfycbyHO0RpdgdHY8L0fHFfTqvp8yEuAAMOuAWl-gz4F9XuSQQZjCjjTY42qq9IWetCh7HX/exec');
+                 if (!response.ok) {
+                     throw new Error(`HTTP error! status: ${response.status}`);
+                 }
+                 sheetData = await response.json(); // Assuming your Apps Script returns JSON
+                 console.log("Data fetched from Apps Script:", sheetData);
+             } catch (error) {
+                 console.error("Could not fetch data from Google Apps Script:", error);
+                 // Fallback to static data or show an error message
+                 sheetData = getStaticDataForDemo();
+             }
+
+
+            // Create the DataTable
+            var data = new google.visualization.DataTable();
+            data.addColumn('string', 'Task ID');
+            data.addColumn('string', 'Task Name');
+            data.addColumn('string', 'Resource'); // Optional: Assign resources
+            data.addColumn('date', 'Start Date');
+            data.addColumn('date', 'End Date');
+            data.addColumn('number', 'Duration'); // In milliseconds, or null if start/end dates are used
+            data.addColumn('number', 'Percent Complete');
+            data.addColumn('string', 'Dependencies'); // Comma-separated Task IDs
+
+            // Add rows based on your fetched data
+            // Assume sheetData is an array of arrays, where each inner array corresponds to a row
+            // and columns are in the order: Task ID, Task Name, Resource, Start Date (YYYY-MM-DD),
+            // End Date (YYYY-MM-DD), Duration (ms or null), Percent Complete, Dependencies
+            sheetData.forEach(row => {
+                // Parse dates. Google Charts expects Date objects.
+                const startDate = row[3] ? new Date(row[3]) : null;
+                const endDate = row[4] ? new Date(row[4]) : null;
+
+                data.addRow([
+                    row[0], // Task ID
+                    row[1], // Task Name
+                    row[2], // Resource
+                    startDate,
+                    endDate,
+                    row[5], // Duration (ms) - can be null if start/end are set
+                    row[6], // Percent Complete
+                    row[7]  // Dependencies
+                ]);
+            });
+
+            // Define chart options
+            var options = {
+                height: 400, // Adjust height as needed
+                gantt: {
+                    defaultStartDate: new Date(2025, 0, 1), // Optional: Set a default start date for the chart view
+                    barHeight: 20,
+                    trackHeight: 30,
+                    percentEnabled: true, // Show percentage complete in the bar
+                    labelStyle: {
+                        fontName: 'Arial',
+                        fontSize: 12,
+                        color: '#757575',
+                    },
+                    tooltip: {
+                        trigger: 'focus' // 'focus' for hover, 'none' to disable
+                    },
+                    arrow: {
+                        color: '#616161', // Color of dependency arrows
+                        length: 10,
+                        width: 1,
+                        radius: 0
+                    }
+                }
+            };
+
+            // Instantiate and draw the chart
+            var chart = new google.visualization.GanttChart(document.getElementById('chart_div'));
+            chart.draw(data, options);
+        }
+
+        // --- Helper function to provide static data for demonstration ---
+        // In a real scenario, this would be replaced by data fetched from your Google Sheet.
+        // The format here mimics what you might get from a processed sheet (e.g., from Apps Script JSON)
+        function getStaticDataForDemo() {
+            return [
+                // Task ID, Task Name, Resource, Start Date, End Date, Duration (ms), Percent Complete, Dependencies
+                ['Research', 'Find good resources', null, '2025-06-01', '2025-06-05', null, 100, null],
+                ['Write', 'Write paper', 'Writer', '2025-06-06', '2025-06-15', null, 50, 'Research'],
+                ['Cite', 'Create bibliography', 'Librarian', '2025-06-10', '2025-06-18', null, 20, 'Research'],
+                ['Revise', 'Review and edit', 'Editor', null, null, 5 * 24 * 60 * 60 * 1000, 0, 'Write,Cite'], // 5 days duration
+                ['Present', 'Prepare presentation', 'Presenter', '2025-06-20', '2025-06-25', null, 0, 'Revise']
+            ];
+        }
+
+    </script>
+
+</body>
+</html>
